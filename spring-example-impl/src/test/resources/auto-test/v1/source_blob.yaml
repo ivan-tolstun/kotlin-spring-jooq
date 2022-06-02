@@ -1,0 +1,89 @@
+restApiTests:
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create new abb bundle as EMPLOYEE user group 2'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/test_blob_upload_group_2_app_bundle_1'
+    body:
+      description: 'test_source_upload_group_2_app_bundle_1'
+    dmJwtToken:
+      userCustomerId: 2
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundle_create'
+    responseStatusCode: 201
+    variablesToSave:
+      - pathInJson: 'name'
+        saveAs: 'group_2_app_bundle_1_name'
+      - pathInJson: 'id'
+        saveAs: 'group_2_app_bundle_1_id'
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create a new abb bundle version as EMPLOYEE user group 2'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{group_2_app_bundle_1_name}}/versions/0.0.1'
+    body:
+      releaseNotes: 'test_source_upload_group_2_app_bundle_1_version_1'
+      description: 'test_source_upload_group_2_app_bundle_1_version_1'
+    dmJwtToken:
+      userCustomerId: 2
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundleversion_read'
+        - 'appbundleversion_create'
+    responseStatusCode: 201
+    variablesToSave:
+      - pathInJson: 'version'
+        saveAs: 'group_2_app_bundle_1_version_1_name'
+      - pathInJson: 'id'
+        saveAs: 'group_2_app_bundle_1_version_1_id'
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'upload source for group_2_app_bundle_1_version_1_name as parent EMPLOYEE user group 1'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{group_2_app_bundle_1_name}}/versions/{{group_2_app_bundle_1_version_1_name}}/source'
+    uploadFile:
+      filePath: 'blob/app_bundle/pos_hga_proxy-appBundle-1.0.33.tar.gz'
+      controlName: 'sourceFile'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundleversion_update'
+    responseStatusCode: 403
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'upload source for group_2_app_bundle_1_version_1_name as child EMPLOYEE user group 6'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{group_2_app_bundle_1_name}}/versions/{{group_2_app_bundle_1_version_1_name}}/source'
+    uploadFile:
+      filePath: 'blob/app_bundle/pos_hga_proxy-appBundle-1.0.33.tar.gz'
+      controlName: 'sourceFile'
+    dmJwtToken:
+      userCustomerId: 6
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundleversion_update'
+    responseStatusCode: 403
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'upload source for group_2_app_bundle_1_version_1_name as EMPLOYEE user group 2'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{group_2_app_bundle_1_name}}/versions/{{group_2_app_bundle_1_version_1_name}}/source'
+    uploadFile:
+      filePath: 'blob/app_bundle/pos_hga_proxy-appBundle-1.0.33.tar.gz'
+      controlName: 'sourceFile'
+    dmJwtToken:
+      userCustomerId: 2
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundleversion_update'
+    responseStatusCode: 201
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'get source for group_2_app_bundle_1_version_1_name as EMPLOYEE user group 2'
+    method: 'GET'
+    path: '/api/v3/app-bundles/{{group_2_app_bundle_1_name}}/versions/{{group_2_app_bundle_1_version_1_name}}/source'
+    dmJwtToken:
+      userCustomerId: 2
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundleversion_download'
+        - 'appbundleversion_read'
+    responseStatusCode: 200

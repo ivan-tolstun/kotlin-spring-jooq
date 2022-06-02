@@ -1,0 +1,79 @@
+restApiTests:
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create new abb bundle for user group 1 without the necessary access rights'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/app_auto_test_create'
+    body:
+      description: 'description_auto_test_create'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+    responseStatusCode: 403
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create new abb bundle for user group 1'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/app_auto_test_create'
+    body:
+      description: 'description_auto_test_create'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundle_create'
+        - 'appbundleversion_read'
+        - 'appbundleversion_create'
+    responseStatusCode: 201
+    variablesToSave:
+      - pathInJson: 'name'
+        saveAs: 'appBundleName'
+      - pathInJson: 'id'
+        saveAs: 'appBundleId'
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'get all abb bundle versions for new created app bundle'
+    method: 'GET'
+    path: '/api/v3/app-bundles/{{appBundleName}}/versions'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundleversion_read'
+        - 'customer_read'
+        - 'appbundleversion_download'
+    responseStatusCode: 200
+    responseBody: '{"total":0,"data":[]}'
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create a new abb bundle version without the necessary access rights'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{appBundleName}}/versions/1.2.3'
+    body:
+      releaseNotes: 'releaseNotes_auto_test_create'
+      description: 'description_auto_test_create'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundle_create'
+        - 'appbundleversion_read'
+    responseStatusCode: 403
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'create a new abb bundle version'
+    method: 'PUT'
+    path: '/api/v3/app-bundles/{{appBundleName}}/versions/1.2.3'
+    body:
+      releaseNotes: 'releaseNotes_auto_test_create'
+      description: 'description_auto_test_create'
+    dmJwtToken:
+      userCustomerId: 1
+      userType: 'EMPLOYEE'
+      userPermissions:
+        - 'appbundle_read'
+        - 'appbundle_create'
+        - 'appbundleversion_read'
+        - 'appbundleversion_create'
+    responseStatusCode: 201
+    #responseBody: '{"id":18,"version":"1.2.3","description":"description_auto_test_create","releaseNotes":"releaseNotes_auto_test_create","appBundleId":{{appBundleId}},"appBundleName":{{appBundleName}},"blobSize":0,"hasBlob":false,"hasSources":false,"deprecated":false}'
