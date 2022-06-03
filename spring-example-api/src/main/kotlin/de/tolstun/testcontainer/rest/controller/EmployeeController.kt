@@ -30,7 +30,7 @@ interface EmployeeController {
         @RequestParam(name = "notEmployeeFirstNames", required = false) notEmployeeFirstNames: List<String>? = emptyList(),
         @RequestParam(name = "employeeLastNames", required = false) employeeLastNames: List<String>? = emptyList(),
         @RequestParam(name = "notEmployeeLastNames", required = false) notEmployeeLastNames: List<String>? = emptyList(),
-        @RequestParam(name = "sorting", required = false) sorting: List<SortDto>? = emptyList(),
+        @RequestParam(name = "sorting", required = false) sorting: String? = null,
         @RequestParam(name = "offset", required = false) offset: Int? = null,
         @RequestParam(name = "limit", required = false) limit: Int? = null,
         @RequestParam(name = "selectFields", required = false) selectFields: List<String>? = emptyList(),

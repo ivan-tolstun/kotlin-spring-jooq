@@ -15,5 +15,14 @@ object CommonDto {
         mapper.readValue(this, SortDto::class.java)
 
 
+    fun Map<String, String>.toSortDto() =
+
+        SortDto(
+            field = this["field"]!!,
+            order = this["order"]!!,
+        )
+
+
+
 
 }

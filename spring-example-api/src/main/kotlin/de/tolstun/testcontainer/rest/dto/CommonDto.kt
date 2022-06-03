@@ -1,5 +1,11 @@
 package de.tolstun.testcontainer.rest.dto
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 
-data class SortDto(val field: String,
-                   val order: String)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class SortDto(@JsonProperty("field") val field: String,
+                   @JsonProperty("order") val order: String)

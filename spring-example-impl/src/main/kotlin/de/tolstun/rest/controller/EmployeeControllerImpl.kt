@@ -2,6 +2,7 @@ package de.tolstun.rest.controller
 
 import de.tolstun.database.EmployeeDataAccessService
 import de.tolstun.database.table.EmployeeTable
+import de.tolstun.rest.dto.behavior.CommonDto.toSortDto
 import de.tolstun.rest.dto.behavior.EmployeeDtoBehavior.toDto
 import de.tolstun.testcontainer.rest.controller.EmployeeController
 import de.tolstun.testcontainer.rest.dto.EmployeeDto
@@ -34,7 +35,7 @@ class EmployeeControllerImpl(val employeeDataAccessService: EmployeeDataAccessSe
                                notEmployeeFirstNames: List<String>?,
                                employeeLastNames: List<String>?,
                                notEmployeeLastNames: List<String>?,
-                               sorting: List<SortDto>?,
+                               sorting: String?,
                                offset: Int?,
                                limit: Int?,
                                selectFields: List<String>?,
@@ -50,7 +51,7 @@ class EmployeeControllerImpl(val employeeDataAccessService: EmployeeDataAccessSe
                 notEmployeeLastNames = notEmployeeLastNames,
                 offset = offset,
                 limit = limit,
-                sorting = sortEmployees(sorting),
+                sorting = sortEmployees(sorting?.toSortDto()),
                 selectFields = selectEmployeeField(selectFields, notSelectFields)
             )
             .map { optionalResult ->
@@ -93,23 +94,21 @@ class EmployeeControllerImpl(val employeeDataAccessService: EmployeeDataAccessSe
     }
 
 
-    private fun sortEmployees(sortConfDTOs: List<SortDto>?) = { employeeTable: EmployeeTable ->
+    private fun sortEmployees(sortConfDTO: SortDto?) = { employeeTable: EmployeeTable ->
 
         val fieldMapper = mapOf(
             "email" to employeeTable.EMPLOYEE_EMAIL,
             "firstName" to employeeTable.EMPLOYEE_FIRST_NAME,
             "lastName" to employeeTable.EMPLOYEE_LAST_NAME)
 
-        sortConfDTOs
-            ?.mapNotNull { sortConfDTO ->
+        val originField = fieldMapper[sortConfDTO?.field]
+        val originOrder = SortOrder.values().find { it.name == sortConfDTO?.order?.uppercase() }
 
-                val originField = fieldMapper[sortConfDTO.field]
-                val originOrder = SortOrder.values().find { it.name == sortConfDTO.order.uppercase() }
+        listOfNotNull(
+            if(originField != null && originOrder != null) originField to originOrder
+            else null
+        )
 
-                if(originField != null && originOrder != null) originField to originOrder
-                else null
-            }
-            ?: emptyList()
     }
 
 

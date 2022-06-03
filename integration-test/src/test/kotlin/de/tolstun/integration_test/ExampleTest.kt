@@ -4,9 +4,11 @@ import de.tolstun.testcontainer.extension.impl.container.*
 import de.tolstun.integration_test.config.DbDatasetDirectory
 import de.tolstun.integration_test.config.DbMigrationDirectory
 import de.tolstun.integration_test.config.YamlTestDirectory
+import de.tolstun.testcontainer.rest.dto.SortDto
 import org.junit.Rule
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.matchers.JUnitMatchers.containsString
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
@@ -19,16 +21,6 @@ import java.time.Duration
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DisplayName("EMPLOYEE TEST CONTAINER :: INTEGRATION_TEST")
 open class ExampleTest {
-
-
-    private val updateDbDatasetV1 = {
-
-        postgreSQLContainer.runMigrationScripts(
-            *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
-            *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
-            *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
-        )
-    }
 
 
     @BeforeAll
@@ -56,21 +48,96 @@ open class ExampleTest {
 
 
     @Test
-    fun `auto rest api test from yaml file`() {
+    fun `test GET employees`() {
 
-        updateDbDatasetV1()
-        employeeContainer.runYamlTests(YamlTestDirectory.V1__EMPLOYEE.path)
-        updateDbDatasetV1()
+        postgreSQLContainer.runMigrationScripts(
+            *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
+            *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
+            *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
+        )
+
+        employeeContainer.GET(
+            path = "/api/employees",
+            queries = mapOf(
+                "sorting" to SortDto(field = "email", order = "desc")
+            )
+        )
+            .then()
+            .statusCode(200)
+            .body(containsString(
+                "{\"email\":\"device.manager@exceet.de\",\"firstName\":\"Device\",\"lastName\":\"Manager\"}," +
+                        "{\"email\":\"Roman.Rem@exceet.de\",\"firstName\":\"Rem\",\"lastName\":\"Roman\"}," +
+                        "{\"email\":\"Ivan.Tol@exceet.de\",\"firstName\":\"Tol\",\"lastName\":\"Ivan\"}," +
+                        "{\"email\":\"Ilgar.Bos@exceet.de\",\"firstName\":\"Bos\",\"lastName\":\"Ilgar\"}"
+            ))
     }
 
 
 
     @Test
-    fun `rest api test`() {
+    fun `test GET employees with selected emails`() {
 
-        updateDbDatasetV1()
+        postgreSQLContainer.runMigrationScripts(
+            *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
+            *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
+            *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
+        )
+
+        employeeContainer.GET(
+            path = "/api/employees",
+            queries = mapOf(
+                "sorting" to SortDto(field = "email", order = "desc"),
+                "employeeEmails" to listOf("device.manager@exceet.de", "Roman.Rem@exceet.de")
+            )
+        )
+            .then()
+            .statusCode(200)
+            .body(containsString(
+                "{\"email\":\"device.manager@exceet.de\",\"firstName\":\"Device\",\"lastName\":\"Manager\"}," +
+                        "{\"email\":\"Roman.Rem@exceet.de\",\"firstName\":\"Rem\",\"lastName\":\"Roman\"}"
+            ))
+    }
+
+
+
+    @Test
+    fun `test GET employees with email field only`() {
+
+        postgreSQLContainer.runMigrationScripts(
+            *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
+            *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
+            *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
+        )
+
+        employeeContainer.GET(
+            path = "/api/employees",
+            queries = mapOf(
+                "sorting" to SortDto(field = "email", order = "desc"),
+                "employeeEmails" to listOf("device.manager@exceet.de", "Roman.Rem@exceet.de"),
+                "selectFields" to listOf("email")
+            )
+        )
+            .then()
+            .statusCode(200)
+            .body(containsString(
+                "{\"email\":\"device.manager@exceet.de\"}," +
+                        "{\"email\":\"Roman.Rem@exceet.de\"}"
+            ))
+
+    }
+
+
+
+    @Test
+    fun `auto rest api test from yaml file`() {
+
+        postgreSQLContainer.runMigrationScripts(
+            *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
+            *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
+            *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
+        )
+
         employeeContainer.runYamlTests(YamlTestDirectory.V1__EMPLOYEE.path)
-        updateDbDatasetV1()
     }
 
 
@@ -95,7 +162,7 @@ open class ExampleTest {
 
         @Rule
         val employeeContainer: JavaRestApiContainer = JavaRestApiContainer(
-            jarFile = File("""./../spring-example-impl/target/spring-example-impl-0.1.0.jar"""),
+            jarFile = File("""./../spring-example-impl/target/spring-example-impl-0.1.1.jar"""),
             internalContainerName = "employee--itest",
             internalDomain = "employee",
             internalHttpPort = 8080,

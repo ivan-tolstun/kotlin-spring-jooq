@@ -1,141 +1,100 @@
-# Docker test containers (extension version)
+# Spring-boot with Jooq and Testcontainer
 
-This is an extension to the "testcontainer" library for use in tests. 
-Implemented ready-made containers with advanced functions.
 
-## Use container templates
+- In this project you will find an example of using the Jooq library together with Spring-boot.
+- Also here is an example integration test using docker containers
 
-### PostgreSQL container:
+
+## Data access with Jooq
+
 ```kotlin
-@Rule
-val postgreSQLContainer = DmPostgreSQLContainer(
-        imageName = "postgres:11-alpine",
-        internalContainerName = "db-itest",
-        internalHost = "db",
-        databaseName = "database",
-        userName = "manager",
-        password = "manager",
-        environmentVariables = mutableMapOf("TZ" to "Europe/Berlin"))
+dslContext
+    .select(EMPLOYEE.EMPLOYEE_EMAIL, EMPLOYEE.EMPLOYEE_LAST_NAME)
+    .from(EMPLOYEE)
+    .where(EMPLOYEE.EMPLOYEE_EMAIL.`in`(listOf("user1@bla.de", "user2@bla.de", "user3@bla.de")))
+    .orderBy(EMPLOYEE.EMPLOYEE_EMAIL.desc())
 ```
 
-### Kafka containers:
+
+## Test with docker container 
+
 ```kotlin
 @Rule
-val kafkaContainer = DmKafkaContainer(
-        internalContainerName = "kafka-itest")
-
-@Rule
-val zooKeeperContainer = DmZooKeeperContainer(
-    internalContainerName = "zooKeeper-itest")
-```
-
-### App container from jar with DB and Kafka dependency:
-```kotlin
-@Rule
-val deviceContainer = DmRestApiContainerFromJar(
-        jarFileDirectory = """./path_to_jar""",
-        internalContainerName = "device-itest",
-        internalDomain = "dm-device",
+val employeeContainer: JavaRestApiContainer = JavaRestApiContainer(
+        jarFile = File("""./../spring-example-impl/target/spring-example-impl-0.1.1.jar"""),
+        internalContainerName = "employee--itest",
+        internalDomain = "employee",
         internalHttpPort = 8080,
         jwtKey = JWT_KEY,
         environmentVariables = mutableMapOf(
-            "DATABASE" to postgreSQLContainer.databaseName,
+            "DB_DATABASE" to postgreSQLContainer.databaseName,
             "DB_USER" to postgreSQLContainer.userName,
             "DB_PASSWORD" to postgreSQLContainer.password,
-            "DB_URL" to postgreSQLContainer.internalHost,
+            "DB_URL" to postgreSQLContainer.internalDomain,
             "DB_PORT" to postgreSQLContainer.internalPort.toString(),
-            "EXCEET_SECURITY_JWT_KEY" to JWT_KEY,
-            "KAFKA_BOOTSTRAP_SERVERS" to "${kafkaContainer.internalHost}:${kafkaContainer.internalPort}"
         ),
         internalHttpsPort = null,
+        internalDebugPort = 5005,
         _waitStrategy = Wait.forHttp("/actuator/health").withReadTimeout(Duration.ofSeconds(25))
     )
-```
 
 
-### App container from image with DB and Kafka dependency:
-```kotlin
-@Rule
-val deviceContainer = DmRestApiContainer(
-        imageName = """image_url""",
-        internalContainerName = "service-name-itest",
-        internalDomain = "dm-service-name",
-        internalHttpPort = 8080,
-        jwtKey = JWT_KEY,
-        environmentVariables = mutableMapOf(
-            "DATABASE" to postgreSQLContainer.databaseName,
-            "DB_USER" to postgreSQLContainer.userName,
-            "DB_PASSWORD" to postgreSQLContainer.password,
-            "DB_URL" to postgreSQLContainer.internalHost,
-            "DB_PORT" to postgreSQLContainer.internalPort.toString(),
-            "EXCEET_SECURITY_JWT_KEY" to JWT_KEY,
-            "KAFKA_BOOTSTRAP_SERVERS" to "${kafkaContainer.internalHost}:${kafkaContainer.internalPort}"
-        ),
-        internalHttpsPort = null,
-        _waitStrategy = Wait.forHttp("/actuator/health").withReadTimeout(Duration.ofSeconds(25))
+@Test
+fun `test GET employees with email field only`() {
+
+    postgreSQLContainer.runMigrationScripts(
+        *DbMigrationDirectory.ROLL_BACK_MIGRATION.paths.toTypedArray(),
+        *DbMigrationDirectory.MIGRATION_1.paths.toTypedArray(),
+        *DbDatasetDirectory.DATASET_V1.paths.toTypedArray()
     )
+
+    employeeContainer.GET(
+        path = "/api/employees",
+        queries = mapOf(
+            "sorting" to SortDto(field = "email", order = "desc"),
+            "employeeEmails" to listOf("device.manager@exceet.de", "Roman.Rem@exceet.de"),
+            "selectFields" to listOf("email")
+        )
+    )
+        .then()
+        .statusCode(200)
+        .body(containsString(
+            "{\"email\":\"device.manager@exceet.de\"}," +
+                    "{\"email\":\"Roman.Rem@exceet.de\"}"
+        ))
+
+}
 ```
 
 
-## Autotest with rest-api containers
-```kotlin
-postgreSQLContainer.runMigrationScripts(
-    "db/dataset/R__1_insert_customer_data.sql",
-    "db/dataset/R__2_insert_hardware_data.sql",
-    "db/dataset/R__3_insert_device_data.sql")
+## Test with docker container and Yaml test file
 
-deviceContainer.runYamlTests("auto-test/device.yaml")
-```
 ```yaml
 restApiTests:
-  # --------------------------------------------------------------------------
-  - testName: 'test on successful'
+  - testName: 'get employees with email field only'
     method: 'GET'
-    path: '/api/customer/1/device'
-    dmJwtToken:
-        userCustomerId: 1
-        userType: 'EMPLOYEE'
-        userPermissions:
-          - 'device_create'
-          - 'device_read'
-          - 'device_update'
-          - 'device_delete'
+    path: '/api/employees'
+    queries:
+      selectFields:
+        - 'email'
+      employeeEmails:
+        - 'device.manager@exceet.de'
+        - 'Roman.Rem@exceet.de'
+      sorting:
+        field: 'email'
+        order: 'desc'
     responseStatusCode: 200
-    responseBody: '{"limit":65535,"page":1,"pagecount":1,"total":3,"data":[{"id":1,"serial":"12345678900000000000","description":"description_1","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true},{"id":5,"serial":"12345678900000000004","description":"description_5","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true},{"id":6,"serial":"12345678900000000005","description":"description_6","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true}]}'
-    variablesToSave:
-      - pathInJson: 'pagecount'
-        saveAs: 'numberOfDevices'
-      - pathInJson: 'page'
-        saveAs: 'pageNumber'
-      - pathInJson: 'data[0].customerId'
-        saveAs: 'device_0_customerId'
-  # --------------------------------------------------------------------------
-  - testName: 'test to use the stored value'
-    method: 'GET'
-    path: '/api/customer/{{device_0_customerId}}/device'
-    dmJwtToken:
-        userCustomerId: 1
-        userType: 'EMPLOYEE'
-        userPermissions:
-          - 'device_create'
-          - 'device_read'
-          - 'device_update'
-          - 'device_delete'
-    responseStatusCode: 200
-    responseBody: '{"limit":65535,"page":{{pageNumber}},"pagecount":{{numberOfDevices}},"total":3,"data":[{"id":1,"serial":"12345678900000000000","description":"description_1","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true},{"id":5,"serial":"12345678900000000004","description":"description_5","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true},{"id":6,"serial":"12345678900000000005","description":"description_6","customerId":1,"appBundleName":null,"appBundleVersion":null,"osName":null,"osVersion":null,"hardwareType":{"id":1,"name":"type_1","description":"description_1"},"state":{},"stateDate":null,"active":true}]}'
+    responseBody: '[{"email":"device.manager@exceet.de"},{"email":"Roman.Rem@exceet.de"}]'
 ```
-
-
 
 
 ## Maven
 
 * <em style="color:#ffc;">Don't run the test:</em> ``````-Dmaven.test.skip=true``````
-* <em style="color:#ffc;">The micronaut framework adds a reflection configuration file:</em> ``````-Dpackaging=docker-native``````
 
 #### Build project
 ```console
-ivan@68rus:~$ ./mvnw clean install -Dpackaging=docker-native -Dmaven.test.skip=true
+ivan@68rus:~$ ./mvnw clean install -Dmaven.test.skip=true
 ```
 
 #### Test project

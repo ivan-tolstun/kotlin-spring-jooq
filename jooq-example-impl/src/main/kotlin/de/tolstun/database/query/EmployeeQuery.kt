@@ -25,6 +25,7 @@ class EmployeeQuery(val dslContext: DSLContext) : QueryHelper {
             .findFieldsOrAsterisk(selectFields, EMPLOYEE)
             .filter { field -> !notSelectFields.contains(field) }
 
+
         return dslContext
 
             .select(fieldsToSelect)

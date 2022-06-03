@@ -1,6 +1,4 @@
 globalVariables:
-  - key: employee_device_manager
-    value: '{"email": "device.manager@exceet.de","firstName":"Manager","lastName":"Device"}'
 restApiTests:
   # --------------------------------------------------------------------------------------------------------------------
   - testName: 'get all employees'
@@ -8,17 +6,43 @@ restApiTests:
     path: '/api/employees'
     queries:
       sorting:
-        - field: 'email'
-          order: 'desc'
-    jwt:
-      body:
-        sub: '1'
-        role: 'EMPLOYEE'
-        permissions:
-          - 'employee_read'
-          - 'employee_create'
-          - 'employee_update'
-      expires: 5000
-    responseStatusCode: 500
-
+        field: 'email'
+        order: 'desc'
+    responseStatusCode: 200
+    responseBody: '[{"email":"device.manager@exceet.de","firstName":"Device","lastName":"Manager"},{"email":"Roman.Rem@exceet.de","firstName":"Rem","lastName":"Roman"},{"email":"Ivan.Tol@exceet.de","firstName":"Tol","lastName":"Ivan"},{"email":"Ilgar.Bos@exceet.de","firstName":"Bos","lastName":"Ilgar"}]'
   # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'get employees with emails: device.manager@exceet.de and Roman.Rem@exceet.de'
+    method: 'GET'
+    path: '/api/employees'
+    queries:
+      employeeEmails:
+        - 'device.manager@exceet.de'
+        - 'Roman.Rem@exceet.de'
+      sorting:
+        field: 'email'
+        order: 'desc'
+    responseStatusCode: 200
+    responseBody: '[{"email":"device.manager@exceet.de","firstName":"Device","lastName":"Manager"},{"email":"Roman.Rem@exceet.de","firstName":"Rem","lastName":"Roman"}]'
+  # --------------------------------------------------------------------------------------------------------------------
+  - testName: 'get employees with email field only'
+    method: 'GET'
+    path: '/api/employees'
+    queries:
+      selectFields:
+        - 'email'
+      employeeEmails:
+        - 'device.manager@exceet.de'
+        - 'Roman.Rem@exceet.de'
+      sorting:
+        field: 'email'
+        order: 'desc'
+    responseStatusCode: 200
+    responseBody: '[{"email":"device.manager@exceet.de"},{"email":"Roman.Rem@exceet.de"}]'
+  # --------------------------------------------------------------------------------------------------------------------
+#  - testName: 'create a new employee'
+#    method: 'PUT'
+#    path: '/api/employees/new.employee@exceet'
+#    body:
+#      firstName: 'new'
+#      lastName: 'employee'
+#    responseStatusCode: 201
